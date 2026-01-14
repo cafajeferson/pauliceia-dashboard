@@ -144,6 +144,13 @@ def excluir_produto(id_produto):
     conn.commit()
     conn.close()
 
+def atualizar_produto(id_produto, descricao, endereco):
+    conn = get_db_connection()
+    conn.execute("UPDATE produtos SET descricao = ?, endereco = ? WHERE id = ?",
+                 (descricao.upper().strip(), endereco.upper().strip(), id_produto))
+    conn.commit()
+    conn.close()
+
 def listar_produtos(filtro=""):
     conn = get_db_connection()
     query = "SELECT id, descricao, endereco FROM produtos"
@@ -281,15 +288,41 @@ with aba2:
     df = listar_produtos(busca)
     
     if not df.empty:
-        c1, c2, c3 = st.columns([4, 2, 1])
-        c1.markdown("**DESCRIÇÃO**"); c2.markdown("**ENDEREÇO**"); c3.markdown("**AÇÃO**")
+        c1, c2, c3 = st.columns([4, 2, 2])
+        c1.markdown("**DESCRIÇÃO**"); c2.markdown("**ENDEREÇO**"); c3.markdown("**AÇÕES**")
         st.markdown("<hr style='margin: 5px 0'>", unsafe_allow_html=True)
-        
+
         for idx, row in df.iterrows():
-            c1, c2, c3 = st.columns([4, 2, 1])
-            c1.text(row['descricao'])
-            c2.text(row['endereco'])
-            if c3.button("Excluir", key=f"del_{row['id']}"):
-                excluir_produto(row['id'])
-                st.rerun()
-            st.markdown("<hr style='margin:0; opacity:0.1'>", unsafe_allow_html=True)
+            with st.container():
+                c1, c2, c3 = st.columns([4, 2, 2])
+
+                # Verifica se está em modo de edição
+                if f"edit_{row['id']}" in st.session_state and st.session_state[f"edit_{row['id']}"]:
+                    # Modo de edição
+                    nova_descricao = c1.text_input("", value=row['descricao'], key=f"desc_{row['id']}", label_visibility="collapsed")
+                    novo_endereco = c2.text_input("", value=row['endereco'], key=f"end_{row['id']}", label_visibility="collapsed")
+
+                    col_salvar, col_cancelar = c3.columns(2)
+                    if col_salvar.button("✅", key=f"save_{row['id']}", help="Salvar"):
+                        atualizar_produto(row['id'], nova_descricao, novo_endereco)
+                        st.session_state[f"edit_{row['id']}"] = False
+                        st.success("Produto atualizado!")
+                        time.sleep(0.3)
+                        st.rerun()
+                    if col_cancelar.button("❌", key=f"cancel_{row['id']}", help="Cancelar"):
+                        st.session_state[f"edit_{row['id']}"] = False
+                        st.rerun()
+                else:
+                    # Modo de visualização
+                    c1.text(row['descricao'])
+                    c2.text(row['endereco'])
+
+                    col_editar, col_excluir = c3.columns(2)
+                    if col_editar.button("✏️", key=f"edit_btn_{row['id']}", help="Editar"):
+                        st.session_state[f"edit_{row['id']}"] = True
+                        st.rerun()
+                    if col_excluir.button("🗑️", key=f"del_{row['id']}", help="Excluir"):
+                        excluir_produto(row['id'])
+                        st.rerun()
+
+                st.markdown("<hr style='margin:0; opacity:0.1'>", unsafe_allow_html=True)
