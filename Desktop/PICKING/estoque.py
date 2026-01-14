@@ -3,7 +3,6 @@ import pandas as pd
 import sqlite3
 import re
 import time
-import textwrap
 
 # --- Configuração da Página ---
 st.set_page_config(page_title="Pauliceia - Impressão", layout="wide")
@@ -206,15 +205,21 @@ with aba1:
                     qtd, nome = match.group(1), match.group(2).strip()
                 else:
                     qtd, nome = "1,00", linha
-                
-                cursor.execute("SELECT endereco FROM produtos WHERE descricao = ?", (nome,))
+
+                # Converte para maiúsculas para buscar
+                nome_upper = nome.upper()
+
+                # Tenta busca exata
+                cursor.execute("SELECT endereco FROM produtos WHERE descricao = ?", (nome_upper,))
                 res = cursor.fetchone()
+
+                # Se não achar, tenta busca parcial
                 if not res:
-                    cursor.execute("SELECT endereco FROM produtos WHERE descricao LIKE ?", (f'%{nome}%',))
+                    cursor.execute("SELECT endereco FROM produtos WHERE descricao LIKE ?", (f'%{nome_upper}%',))
                     res = cursor.fetchone()
-                
+
                 end = res[0] if res else "SEM ENDEREÇO"
-                lista_final.append({'qtd': qtd, 'nome': nome, 'end': end})
+                lista_final.append({'qtd': qtd, 'nome': nome_upper, 'end': end})
             
             conn.close()
 
@@ -234,36 +239,34 @@ with aba1:
                 linhas_html += f'<tr {classe_tr}><td style="text-align: center;">{item["qtd"]}</td><td>{item["nome"]}</td><td style="font-weight: bold;">{item["end"]}</td><td style="text-align: center; font-weight: bold;">[ &nbsp; ]</td></tr>'
 
             data_hoje = time.strftime('%d/%m/%Y')
-            
-            # HTML COMPACTADO (USANDO DEDENT)
-            html_relatorio = textwrap.dedent(f"""
-            <div class="folha-impressao">
-                <div class="header-relatorio">
-                    <h2 style="margin: 0; font-size: 24px;">📋 PEDIDO DE SEPARAÇÃO</h2>
-                    <div style="text-align: right; font-size: 14px;">Data: {data_hoje}</div>
-                </div>
-                <div style="margin-bottom: 15px; font-size: 16px;">
-                    CLIENTE: <strong style="font-size: 18px;">{cliente.upper()}</strong>
-                </div>
-                <table class="tabela-pedido">
-                    <thead>
-                        <tr>
-                            <th style="width: 10%; text-align: center;">QTD</th>
-                            <th style="width: 55%;">DESCRIÇÃO DO PRODUTO</th>
-                            <th style="width: 25%;">ENDEREÇO</th>
-                            <th style="width: 10%; text-align: center;">CONF.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {linhas_html}
-                    </tbody>
-                </table>
-                <div style="margin-top: 30px; text-align: center; font-size: 12px; color: gray;">
-                    Conferido por: ____________________________________
-                </div>
-            </div>
-            """)
-            
+
+            # HTML DO RELATÓRIO
+            html_relatorio = f'''<div class="folha-impressao">
+<div class="header-relatorio">
+<h2 style="margin: 0; font-size: 24px;">📋 PEDIDO DE SEPARAÇÃO</h2>
+<div style="text-align: right; font-size: 14px;">Data: {data_hoje}</div>
+</div>
+<div style="margin-bottom: 15px; font-size: 16px;">
+CLIENTE: <strong style="font-size: 18px;">{cliente.upper()}</strong>
+</div>
+<table class="tabela-pedido">
+<thead>
+<tr>
+<th style="width: 10%; text-align: center;">QTD</th>
+<th style="width: 55%;">DESCRIÇÃO DO PRODUTO</th>
+<th style="width: 25%;">ENDEREÇO</th>
+<th style="width: 10%; text-align: center;">CONF.</th>
+</tr>
+</thead>
+<tbody>
+{linhas_html}
+</tbody>
+</table>
+<div style="margin-top: 30px; text-align: center; font-size: 12px; color: gray;">
+Conferido por: ____________________________________
+</div>
+</div>'''
+
             st.divider()
             st.markdown(html_relatorio, unsafe_allow_html=True)
             st.success("✅ Relatório pronto! Pressione Ctrl + P para imprimir.")
@@ -273,6 +276,21 @@ with aba1:
 # ==============================================================================
 with aba2:
     st.subheader("Gerenciar Produtos")
+
+    # Estatísticas rápidas
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM produtos")
+    total_produtos = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM produtos WHERE endereco = 'SEM ENDEREÇO'")
+    sem_endereco = cursor.fetchone()[0]
+    conn.close()
+
+    col_stat1, col_stat2, col_stat3 = st.columns(3)
+    col_stat1.metric("Total de Produtos", f"{total_produtos:,}")
+    col_stat2.metric("Com Endereço", f"{total_produtos - sem_endereco:,}")
+    col_stat3.metric("Sem Endereço", f"{sem_endereco:,}", delta=None if sem_endereco == 0 else f"-{sem_endereco}")
+
     with st.expander("➕ Cadastrar Novo"):
         c1, c2, c3 = st.columns([3, 2, 1])
         n_nome = c1.text_input("Nome")
@@ -282,11 +300,52 @@ with aba2:
                 cadastrar_produto(n_nome, n_end)
                 st.success("Cadastrado!")
                 time.sleep(0.5); st.rerun()
-    
+
     st.divider()
-    busca = st.text_input("🔍 Pesquisar no Estoque")
-    df = listar_produtos(busca)
-    
+
+    # Campo de busca com dica
+    st.markdown("**🔍 Buscar Produtos** _(Digite algo para buscar - ex: CATALISADOR, LIXA, etc.)_")
+    busca = st.text_input("Buscar", placeholder="Digite o nome do produto...", label_visibility="collapsed")
+
+    # Filtro rápido por endereço
+    col_filtro1, col_filtro2 = st.columns([3, 1])
+    with col_filtro2:
+        filtro_endereco = st.selectbox("Filtro", ["Todos", "Só SEM ENDEREÇO", "Só COM ENDEREÇO"], label_visibility="collapsed")
+
+    # Aplica filtros
+    if filtro_endereco == "Só SEM ENDEREÇO":
+        if busca:
+            df = listar_produtos(busca)
+            df = df[df['endereco'] == 'SEM ENDEREÇO']
+        else:
+            conn = get_db_connection()
+            df = pd.read_sql("SELECT id, descricao, endereco FROM produtos WHERE endereco = 'SEM ENDEREÇO' LIMIT 100", conn)
+            conn.close()
+    elif filtro_endereco == "Só COM ENDEREÇO":
+        if busca:
+            df = listar_produtos(busca)
+            df = df[df['endereco'] != 'SEM ENDEREÇO']
+        else:
+            conn = get_db_connection()
+            df = pd.read_sql("SELECT id, descricao, endereco FROM produtos WHERE endereco != 'SEM ENDEREÇO' LIMIT 100", conn)
+            conn.close()
+    else:
+        if busca:
+            df = listar_produtos(busca)
+        else:
+            # Mostra mensagem para pesquisar
+            st.info("💡 **Digite algo no campo de busca** para encontrar produtos. Com mais de 1.500 produtos, é melhor buscar o que você precisa!")
+            df = pd.DataFrame()
+
+    # Limita a 100 resultados para performance
+    if not df.empty:
+        total_encontrados = len(df)
+        if total_encontrados > 100:
+            st.warning(f"⚠️ Encontrados {total_encontrados} produtos. Mostrando apenas os primeiros 100. Use a busca para refinar!")
+            df = df.head(100)
+        else:
+            st.success(f"✅ {total_encontrados} produto(s) encontrado(s)")
+
     if not df.empty:
         c1, c2, c3 = st.columns([4, 2, 2])
         c1.markdown("**DESCRIÇÃO**"); c2.markdown("**ENDEREÇO**"); c3.markdown("**AÇÕES**")
