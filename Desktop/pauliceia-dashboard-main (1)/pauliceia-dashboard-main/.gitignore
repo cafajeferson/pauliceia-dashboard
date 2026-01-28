@@ -1,0 +1,40 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Banco de dados local (SQLite)
+*.db
+
+# Arquivos de ambiente
+.env
+.env.local
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sistema
+.DS_Store
+Thumbs.db
+nul
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+
+# Node
+node_modules/
+dist/
+.vite/
