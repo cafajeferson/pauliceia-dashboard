@@ -79,7 +79,17 @@ export const db = {
             return data
         } catch (error) {
             console.error('Error fetching clients:', error)
-            return []
+            // Fallback for missing column or other errors: return all clients
+            try {
+                const { data: fallbackData } = await supabase
+                    .from('clientes')
+                    .select('id, nome')
+                    .order('nome')
+                return fallbackData || []
+            } catch (fallbackError) {
+                console.error('Critical: Failed to fetch clients even with fallback:', fallbackError)
+                return []
+            }
         }
     },
 
