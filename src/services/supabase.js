@@ -362,6 +362,17 @@ export const db = {
         return data[0]
     },
 
+    async updateMaterialEmprestado(id, updates) {
+        const { data, error } = await supabase
+            .from('materiais_emprestados')
+            .update(updates)
+            .eq('id', id)
+            .select()
+
+        if (error) throw error
+        return data[0]
+    },
+
     async deleteMaterialEmprestado(id) {
         const { error } = await supabase
             .from('materiais_emprestados')

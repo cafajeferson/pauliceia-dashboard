@@ -60,7 +60,7 @@ export default function Login() {
             <div className="login-container animate-scale-in">
                 <Card glass className="login-card">
                     <div className="login-header">
-                        <img src="/logo.png" alt="Pauliceia" className="login-logo" />
+                        <img src="/logo.png" alt="Paulicéia" className="login-logo" />
                         <h1 className="login-title">Bem-vindo!</h1>
                         <p className="login-subtitle">Faça login para continuar</p>
                     </div>
@@ -104,7 +104,7 @@ export default function Login() {
                     </form>
 
                     <p className="login-footer">
-                        Pauliceia Tintas - Sistema de Gestão
+                        Paulicéia Tintas - Sistema de Gestão
                     </p>
                 </Card>
             </div>

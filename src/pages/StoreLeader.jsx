@@ -174,15 +174,15 @@ export default function StoreLeader() {
                 await db.updateDevemos(editingDevemos.id, {
                     ...formDevemos
                 })
+                setEditingDevemos(null)
             } else {
                 await db.createDevemos({
                     ...formDevemos,
                     usuario_id: currentUser.id,
                     devolvido: false
                 })
+                setShowForm(false)
             }
-            setShowForm(false)
-            setEditingDevemos(null)
             setFormDevemos({ nome_loja: '', produtos: '' })
             loadData()
         } catch (error) {
@@ -197,7 +197,7 @@ export default function StoreLeader() {
             nome_loja: item.nome_loja,
             produtos: item.produtos
         })
-        setShowForm(true)
+        setShowForm(false) // Ensure top form is closed
     }
 
     const toggleDevemos = (id) => {
@@ -250,14 +250,14 @@ export default function StoreLeader() {
                 await db.updateMaterialEmprestado(editingMaterial.id, {
                     ...formMaterial
                 })
+                setEditingMaterial(null)
             } else {
                 await db.createMaterialEmprestado({
                     ...formMaterial,
                     usuario_id: currentUser.id
                 })
+                setShowForm(false)
             }
-            setShowForm(false)
-            setEditingMaterial(null)
             setFormMaterial({ nome_loja: '', produtos: '' })
             loadData()
         } catch (error) {
@@ -272,7 +272,7 @@ export default function StoreLeader() {
             nome_loja: item.nome_loja,
             produtos: item.produtos
         })
-        setShowForm(true)
+        setShowForm(false)
     }
 
     const toggleMaterial = (id) => {
@@ -480,7 +480,11 @@ export default function StoreLeader() {
                                     <h2>Devemos (Pendentes)</h2>
                                     <Button
                                         variant="primary"
-                                        onClick={() => setShowForm(!showForm)}
+                                        onClick={() => {
+                                            setShowForm(!showForm)
+                                            setEditingDevemos(null)
+                                            setFormDevemos({ nome_loja: '', produtos: '' })
+                                        }}
                                         icon={<span>➕</span>}
                                     >
                                         Novo Registro
@@ -489,7 +493,7 @@ export default function StoreLeader() {
 
                                 {showForm && (
                                     <Card glass className="user-form animate-slide-down">
-                                        <h3>{editingDevemos ? 'Editar Registro' : 'Novo Registro'}</h3>
+                                        <h3>Novo Registro</h3>
                                         <form onSubmit={handleSubmitDevemos} className="form-grid">
                                             <Input
                                                 label="Nome da Loja/Fornecedor"
@@ -517,58 +521,86 @@ export default function StoreLeader() {
 
                                 <div className="devemos-list">
                                     {devemos.map((item) => (
-                                        <Card
-                                            key={item.id}
-                                            className="devemos-card"
-                                            hover
-                                            onClick={() => toggleDevemos(item.id)}
-                                            style={{ cursor: 'pointer' }}
-                                        >
-                                            <div className="devemos-header">
-                                                <h3>
-                                                    {expandedDevemos.includes(item.id) ? '🔽' : '▶️'} 🏪 {item.nome_loja}
-                                                </h3>
-                                                <div className="devemos-actions">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            handleEditDevemos(item)
-                                                        }}
-                                                    >
-                                                        ✏️ Editar
-                                                    </Button>
-                                                    <Button
-                                                        variant="primary"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            handleMarcarDevolvido(item.id)
-                                                        }}
-                                                    >
-                                                        ✅ Devolvido
-                                                    </Button>
-                                                    <Button
-                                                        variant="danger"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            handleDeleteDevemos(item.id)
-                                                        }}
-                                                    >
-                                                        🗑️
-                                                    </Button>
+                                        editingDevemos?.id === item.id ? (
+                                            <Card glass className="user-form animate-slide-down" key={item.id}>
+                                                <h3>Editar Registro</h3>
+                                                <form onSubmit={handleSubmitDevemos} className="form-grid">
+                                                    <Input
+                                                        label="Nome da Loja/Fornecedor"
+                                                        value={formDevemos.nome_loja}
+                                                        onChange={(e) => setFormDevemos({ ...formDevemos, nome_loja: e.target.value })}
+                                                        required
+                                                    />
+                                                    <div className="input-wrapper" style={{ gridColumn: '1 / -1' }}>
+                                                        <label className="input-label">Lista de Produtos</label>
+                                                        <textarea
+                                                            className="input"
+                                                            style={{ padding: 'var(--space-4)', minHeight: '100px', resize: 'vertical' }}
+                                                            value={formDevemos.produtos}
+                                                            onChange={(e) => setFormDevemos({ ...formDevemos, produtos: e.target.value })}
+                                                            placeholder="Liste os produtos que devemos..."
+                                                        />
+                                                    </div>
+                                                    <div className="form-actions">
+                                                        <Button type="submit" variant="primary">Salvar</Button>
+                                                        <Button type="button" variant="ghost" onClick={() => setEditingDevemos(null)}>Cancelar</Button>
+                                                    </div>
+                                                </form>
+                                            </Card>
+                                        ) : (
+                                            <Card
+                                                key={item.id}
+                                                className="devemos-card"
+                                                hover
+                                                onClick={() => toggleDevemos(item.id)}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <div className="devemos-header">
+                                                    <h3>
+                                                        {expandedDevemos.includes(item.id) ? '🔽' : '▶️'} 🏪 {item.nome_loja}
+                                                    </h3>
+                                                    <div className="devemos-actions">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleEditDevemos(item)
+                                                            }}
+                                                        >
+                                                            ✏️ Editar
+                                                        </Button>
+                                                        <Button
+                                                            variant="primary"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleMarcarDevolvido(item.id)
+                                                            }}
+                                                        >
+                                                            ✅ Devolvido
+                                                        </Button>
+                                                        <Button
+                                                            variant="danger"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleDeleteDevemos(item.id)
+                                                            }}
+                                                        >
+                                                            🗑️
+                                                        </Button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            {expandedDevemos.includes(item.id) && (
-                                                <div className="devemos-content animate-slide-down">
-                                                    <strong>Produtos:</strong>
-                                                    <p className="devemos-text">{item.produtos || '-'}</p>
-                                                    <p className="report-date">Criado em: {new Date(item.criado_em).toLocaleDateString('pt-BR')}</p>
-                                                </div>
-                                            )}
-                                        </Card>
+                                                {expandedDevemos.includes(item.id) && (
+                                                    <div className="devemos-content animate-slide-down">
+                                                        <strong>Produtos:</strong>
+                                                        <p className="devemos-text">{item.produtos || '-'}</p>
+                                                        <p className="report-date">Criado em: {new Date(item.criado_em).toLocaleDateString('pt-BR')}</p>
+                                                    </div>
+                                                )}
+                                            </Card>
+                                        )
                                     ))}
                                     {devemos.length === 0 && !loading && (
                                         <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Nenhum registro pendente</p></Card>
@@ -637,7 +669,11 @@ export default function StoreLeader() {
                             <h2>Materiais Emprestados</h2>
                             <Button
                                 variant="primary"
-                                onClick={() => setShowForm(!showForm)}
+                                onClick={() => {
+                                    setShowForm(!showForm)
+                                    setEditingMaterial(null)
+                                    setFormMaterial({ nome_loja: '', produtos: '' })
+                                }}
                                 icon={<span>➕</span>}
                             >
                                 Novo Registro
@@ -646,7 +682,7 @@ export default function StoreLeader() {
 
                         {showForm && (
                             <Card glass className="user-form animate-slide-down">
-                                <h3>{editingMaterial ? 'Editar Registro' : 'Novo Registro'}</h3>
+                                <h3>Novo Registro</h3>
                                 <form onSubmit={handleSubmitMaterial} className="form-grid">
                                     <Input
                                         label="Nome da Loja"
@@ -674,46 +710,74 @@ export default function StoreLeader() {
 
                         <div className="devemos-list">
                             {materiais.map((item) => (
-                                <Card
-                                    key={item.id}
-                                    className="devemos-card"
-                                    hover
-                                    onClick={() => toggleMaterial(item.id)}
-                                    style={{ cursor: 'pointer' }}
-                                >
-                                    <div className="devemos-header">
-                                        <h3>{expandedMateriais.includes(item.id) ? '🔽' : '▶️'} 🏪 {item.nome_loja}</h3>
-                                        <div className="devemos-actions">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleEditMaterial(item)
-                                                }}
-                                            >
-                                                ✏️ Editar
-                                            </Button>
-                                            <Button
-                                                variant="danger"
-                                                size="sm"
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleDeleteMaterial(item.id)
-                                                }}
-                                            >
-                                                🗑️
-                                            </Button>
+                                editingMaterial?.id === item.id ? (
+                                    <Card glass className="user-form animate-slide-down" key={item.id}>
+                                        <h3>Editar Registro</h3>
+                                        <form onSubmit={handleSubmitMaterial} className="form-grid">
+                                            <Input
+                                                label="Nome da Loja"
+                                                value={formMaterial.nome_loja}
+                                                onChange={(e) => setFormMaterial({ ...formMaterial, nome_loja: e.target.value })}
+                                                required
+                                            />
+                                            <div className="input-wrapper" style={{ gridColumn: '1 / -1' }}>
+                                                <label className="input-label">Lista de Materiais</label>
+                                                <textarea
+                                                    className="input"
+                                                    style={{ padding: 'var(--space-4)', minHeight: '100px', resize: 'vertical' }}
+                                                    value={formMaterial.produtos}
+                                                    onChange={(e) => setFormMaterial({ ...formMaterial, produtos: e.target.value })}
+                                                    placeholder="Liste os materiais emprestados..."
+                                                />
+                                            </div>
+                                            <div className="form-actions">
+                                                <Button type="submit" variant="primary">Salvar</Button>
+                                                <Button type="button" variant="ghost" onClick={() => setEditingMaterial(null)}>Cancelar</Button>
+                                            </div>
+                                        </form>
+                                    </Card>
+                                ) : (
+                                    <Card
+                                        key={item.id}
+                                        className="devemos-card"
+                                        hover
+                                        onClick={() => toggleMaterial(item.id)}
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        <div className="devemos-header">
+                                            <h3>{expandedMateriais.includes(item.id) ? '🔽' : '▶️'} 🏪 {item.nome_loja}</h3>
+                                            <div className="devemos-actions">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        handleEditMaterial(item)
+                                                    }}
+                                                >
+                                                    ✏️ Editar
+                                                </Button>
+                                                <Button
+                                                    variant="danger"
+                                                    size="sm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        handleDeleteMaterial(item.id)
+                                                    }}
+                                                >
+                                                    🗑️
+                                                </Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                    {expandedMateriais.includes(item.id) && (
-                                        <div className="devemos-content animate-slide-down">
-                                            <strong>Materiais:</strong>
-                                            <p className="devemos-text">{item.produtos || '-'}</p>
-                                            <p className="report-date">Criado em: {new Date(item.criado_em).toLocaleDateString('pt-BR')}</p>
-                                        </div>
-                                    )}
-                                </Card>
+                                        {expandedMateriais.includes(item.id) && (
+                                            <div className="devemos-content animate-slide-down">
+                                                <strong>Materiais:</strong>
+                                                <p className="devemos-text">{item.produtos || '-'}</p>
+                                                <p className="report-date">Criado em: {new Date(item.criado_em).toLocaleDateString('pt-BR')}</p>
+                                            </div>
+                                        )}
+                                    </Card>
+                                )
                             ))}
                             {materiais.length === 0 && !loading && (
                                 <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Nenhum material registrado</p></Card>
