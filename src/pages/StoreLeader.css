@@ -1,0 +1,78 @@
+.devemos-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+}
+
+.devemos-card {
+    padding: var(--space-6);
+}
+
+.devemos-card--devolvido {
+    opacity: 0.7;
+}
+
+.devemos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.devemos-header h3 {
+    margin: 0;
+}
+
+.devemos-actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.devemos-content strong {
+    display: block;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.devemos-text {
+    white-space: pre-wrap;
+    background: rgba(255, 255, 255, 0.03);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--color-accent-cyan);
+    margin: var(--space-3) 0;
+}
+
+.tabs-container {
+    margin-bottom: var(--space-6);
+}
+
+.subtabs {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.subtab {
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.subtab:hover {
+    background: var(--color-surface-hover);
+}
+
+.subtab--active {
+    background: rgba(0, 102, 255, 0.2);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}

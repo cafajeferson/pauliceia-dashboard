@@ -1,0 +1,85 @@
+.image-upload {
+    margin: var(--space-4) 0;
+}
+
+.upload-dropzone {
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--color-surface);
+}
+
+.upload-dropzone:hover {
+    border-color: var(--color-primary);
+    background: var(--color-surface-hover);
+}
+
+.upload-dropzone.dragging {
+    border-color: var(--color-primary);
+    background: var(--color-primary-alpha);
+    transform: scale(1.02);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-2);
+}
+
+.upload-dropzone p {
+    margin: var(--space-2) 0;
+    color: var(--color-text);
+}
+
+.upload-hint {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted) !important;
+}
+
+.image-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+.image-preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 2px solid var(--color-border);
+}
+
+.image-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    background: var(--color-danger);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: bold;
+    transition: all 0.2s ease;
+    opacity: 0.9;
+}
+
+.remove-image-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}

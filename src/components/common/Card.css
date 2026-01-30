@@ -1,0 +1,45 @@
+.card {
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Padding variants */
+.card--padding-none {
+    padding: 0;
+}
+
+.card--padding-sm {
+    padding: var(--space-4);
+}
+
+.card--padding-default {
+    padding: var(--space-6);
+}
+
+.card--padding-lg {
+    padding: var(--space-8);
+}
+
+/* Hover effect */
+.card--hover:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: rgba(0, 102, 255, 0.2);
+}
+
+/* Clickable */
+.card--clickable {
+    cursor: pointer;
+}
+
+/* With glassmorphism */
+.card.glass {
+    box-shadow: var(--shadow-lg);
+}
+
+.card.glass:hover {
+    box-shadow: var(--shadow-xl);
+}
