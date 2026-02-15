@@ -780,6 +780,17 @@ export default function SalesAnalysis({ userId }) {
                                             <Button variant="ghost" onClick={() => setSelectedGroup(null)}>← Voltar aos Grupos</Button>
                                         </div>
 
+                                        {selectedGroup.id === 'todos' && (
+                                            /* Search for TODOS PRODUTOS - view only, no add button */
+                                            <div className="matriz-controls" style={{ position: 'relative' }}>
+                                                <Input
+                                                    placeholder="🔍 Buscar produto..."
+                                                    value={groupSearchTerm}
+                                                    onChange={(e) => setGroupSearchTerm(e.target.value)}
+                                                />
+                                            </div>
+                                        )}
+
                                         {selectedGroup.id !== 'todos' && (
                                             <>
                                                 {/* Search to ADD products */}
@@ -835,7 +846,9 @@ export default function SalesAnalysis({ userId }) {
                                             // Get products for this group
                                             let produtosDoGrupo
                                             if (selectedGroup.id === 'todos') {
-                                                produtosDoGrupo = [...(matrizData?.produtos || [])].sort((a, b) => a.produto.localeCompare(b.produto))
+                                                produtosDoGrupo = [...(matrizData?.produtos || [])]
+                                                    .filter(p => !groupSearchTerm || p.produto.toLowerCase().includes(groupSearchTerm.toLowerCase()))
+                                                    .sort((a, b) => a.produto.localeCompare(b.produto))
                                             } else {
                                                 const savedNames = groupProducts[selectedGroup.id] || []
                                                 produtosDoGrupo = (matrizData?.produtos || []).filter(p => savedNames.includes(p.produto)).sort((a, b) => a.produto.localeCompare(b.produto))
