@@ -375,3 +375,115 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Favoritos - New List View */
+.favoritos-grid-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+
+.favorito-item-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.favorito-item-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    background: rgba(255, 255, 255, 0.05);
+    /* Slight highlight on hover */
+}
+
+.favorito-item-card.stopped {
+    opacity: 0.8;
+}
+
+.favorito-card-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.favorito-info h4 {
+    margin: 0 0 var(--space-1) 0;
+    font-size: var(--font-size-lg);
+    color: var(--color-text-primary);
+}
+
+.favorito-total {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+}
+
+.favorito-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-1);
+}
+
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.success {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--color-success);
+}
+
+.status-badge.danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--color-error);
+}
+
+.click-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.favorito-item-card:hover .click-hint {
+    opacity: 1;
+}
+
+/* Favorito Detail View */
+.favorito-detail {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: var(--space-4);
+}
+
+.detail-header h3 {
+    margin: 0;
+    font-size: var(--font-size-2xl);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

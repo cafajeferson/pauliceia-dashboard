@@ -5,7 +5,34 @@ import { parseCSV, readFileAsText } from '../../utils/csvParser'
 import Button from '../common/Button'
 import Card from '../common/Card'
 import Input from '../common/Input'
+import ClientDashboard from './ClientDashboard'
+import { Line, Bar } from 'react-chartjs-2'
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+} from 'chart.js'
 import './SalesAnalysis.css'
+
+// Register ChartJS components
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+)
 
 export default function SalesAnalysis({ userId }) {
     const [clientes, setClientes] = useState([])
@@ -15,13 +42,15 @@ export default function SalesAnalysis({ userId }) {
     const [vendas, setVendas] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
-    const [activeTab, setActiveTab] = useState('import')
+    const [activeTab, setActiveTab] = useState('dashboard')
     const [uploadProgress, setUploadProgress] = useState(null)
     const [matrizData, setMatrizData] = useState(null)
     const [filtro, setFiltro] = useState('')
     const [favoritos, setFavoritos] = useState([])
     const [mesSelecionadoAnalise, setMesSelecionadoAnalise] = useState(null)
     const [analiseData, setAnaliseData] = useState(null)
+    const [selectedFavorito, setSelectedFavorito] = useState(null)
+    const [searchTermFavoritos, setSearchTermFavoritos] = useState('') // Search term for adding favorites
 
     // Load clients on mount
     useEffect(() => {
@@ -47,6 +76,7 @@ export default function SalesAnalysis({ userId }) {
             setVendas([])
             setMatrizData(null)
         }
+        setSelectedFavorito(null)
     }, [clienteSelecionado, anoSelecionado])
 
     const loadClientes = async () => {
@@ -139,7 +169,7 @@ export default function SalesAnalysis({ userId }) {
         }
 
         setUploadProgress({ current: 0, total: files.length, status: 'Analisando arquivos...' })
-        
+
         // Phase 1: Pre-scan files
         const analysis = []
         const mesMap = {}
@@ -151,14 +181,14 @@ export default function SalesAnalysis({ userId }) {
                 // But for mes extraction we just need name and content length check
                 const content = await readFileAsText(file)
                 const { mes } = parseCSV(content, file.name)
-                
+
                 if (mes) {
                     if (mesMap[mes]) {
                         collisions.push({ mes, file1: mesMap[mes], file2: file.name })
                     }
                     mesMap[mes] = file.name
                 }
-                
+
                 analysis.push({ file: file, name: file.name, mes: mes || 'Não detectado (Geral)' })
             } catch (error) {
                 analysis.push({ file: file, name: file.name, mes: 'Erro', error: error.message })
@@ -177,7 +207,7 @@ export default function SalesAnalysis({ userId }) {
     const startImport = async (filesAnalysis) => {
         setImportConfirmation(null)
         setUploadProgress({ current: 0, total: filesAnalysis.length })
-        
+
         const allVendas = []
         let processedCount = 0
 
@@ -196,7 +226,8 @@ export default function SalesAnalysis({ userId }) {
                     cliente_id: clienteSelecionado.id,
                     ano_referencia: anoSelecionado,
                     arquivo_origem: item.name,
-                    ...d
+                    ...d,
+                    valor_total: d.valor // Map parseCSV 'valor' to DB 'valor_total'
                 }))
 
                 allVendas.push(...records)
@@ -214,8 +245,8 @@ export default function SalesAnalysis({ userId }) {
         if (allVendas.length > 0) {
             try {
                 const result = await salesService.importVendas(
-                    clienteSelecionado.id, 
-                    anoSelecionado, 
+                    clienteSelecionado.id,
+                    anoSelecionado,
                     allVendas,
                     (status) => setUploadProgress(prev => ({ ...prev, status }))
                 )
@@ -231,7 +262,7 @@ export default function SalesAnalysis({ userId }) {
                 alert(`Erro crítico ao salvar dados: ${error.message}`)
             }
         }
-        
+
         setUploadProgress(null)
     }
 
@@ -341,7 +372,7 @@ export default function SalesAnalysis({ userId }) {
         filtro === '' || p.produto.toLowerCase().includes(filtro.toLowerCase())
     )
 
-    const produtosFavoritos = matrizData?.produtos.filter(p => favoritos.includes(p.produto))
+    const produtosFavoritos = matrizData?.produtos?.filter(p => favoritos.includes(p.produto))
 
 
 
@@ -483,6 +514,12 @@ export default function SalesAnalysis({ userId }) {
                     {/* Tabs */}
                     <div className="admin-tabs">
                         <button
+                            className={`admin-tab ${activeTab === 'dashboard' ? 'admin-tab--active' : ''}`}
+                            onClick={() => setActiveTab('dashboard')}
+                        >
+                            📊 Dashboard
+                        </button>
+                        <button
                             className={`admin-tab ${activeTab === 'import' ? 'admin-tab--active' : ''}`}
                             onClick={() => setActiveTab('import')}
                         >
@@ -509,6 +546,18 @@ export default function SalesAnalysis({ userId }) {
                     </div>
 
                     <div className="sales-content">
+                        {/* Dashboard Tab */}
+                        {activeTab === 'dashboard' && (
+                            <ClientDashboard
+                                matrizData={matrizData}
+                                vendas={vendas}
+                                cliente={clienteSelecionado}
+                                ano={anoSelecionado}
+                                favoritos={favoritos} // Passando favoritos (Essenciais)
+                                onToggleFavorito={handleToggleFavorito} // Para poder remover dos favoritos
+                            />
+                        )}
+
                         {/* Import Tab */}
                         {activeTab === 'import' && (
                             <Card>
@@ -536,7 +585,7 @@ export default function SalesAnalysis({ userId }) {
                                         <Card className="modal-content" style={{ maxWidth: '600px' }}>
                                             <h3>📋 Confirmar Importação</h3>
                                             <p>Analise como os arquivos serão processados:</p>
-                                            
+
                                             {importConfirmation.collisions.length > 0 && (
                                                 <div className="alert-box error">
                                                     <strong>⚠️ Atenção! Conflitos detectados:</strong>
@@ -558,14 +607,14 @@ export default function SalesAnalysis({ userId }) {
                                                     </thead>
                                                     <tbody>
                                                         {importConfirmation.files.map((f, idx) => (
-                                                            <tr key={idx} style={{ 
-                                                                color: f.mes === 'Erro' ? 'var(--color-danger)' : 
-                                                                       f.mes.includes('Geral') ? 'var(--color-warning)' : 'inherit'
+                                                            <tr key={idx} style={{
+                                                                color: f.mes === 'Erro' ? 'var(--color-danger)' :
+                                                                    f.mes.includes('Geral') ? 'var(--color-warning)' : 'inherit'
                                                             }}>
                                                                 <td>{f.name}</td>
                                                                 <td>
                                                                     {f.mes}
-                                                                    {f.error && <span style={{display: 'block', fontSize: '0.8em'}}>{f.error}</span>}
+                                                                    {f.error && <span style={{ display: 'block', fontSize: '0.8em' }}>{f.error}</span>}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -645,66 +694,206 @@ export default function SalesAnalysis({ userId }) {
                         {activeTab === 'favoritos' && (
                             <div>
                                 <div className="favoritos-actions">
-                                    <div className="input-wrapper">
-                                        <label className="input-label">Marcar produto como essencial</label>
-                                        <select
-                                            className="input"
-                                            style={{ padding: 'var(--space-4)' }}
-                                            onChange={(e) => {
-                                                if (e.target.value) {
-                                                    handleToggleFavorito(e.target.value)
-                                                    e.target.value = ''
-                                                }
-                                            }}
-                                        >
-                                            <option value="">Selecione um produto...</option>
-                                            {matrizData?.produtos.map((p, idx) => (
-                                                <option key={idx} value={p.produto}>
-                                                    {favoritos.includes(p.produto) ? '⭐ ' : ''}{p.produto}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                                {produtosFavoritos && produtosFavoritos.length > 0 ? (
-                                    <div className="matriz-container">
-                                        <table className="matriz-table">
-                                            <thead>
-                                                <tr>
-                                                    <th className="produto-col">Produto Essencial</th>
-                                                    {matrizData.meses.map(mes => (
-                                                        <th key={mes}>{mes}</th>
-                                                    ))}
-                                                    <th>Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {produtosFavoritos.map((produto, idx) => (
-                                                    <tr key={idx}>
-                                                        <td className="produto-col">⭐ {produto.produto}</td>
-                                                        {matrizData.meses.map(mes => (
-                                                            <td key={mes} className={getCellColor(produto.produto, mes, matrizData.meses)}>
-                                                                {produto[mes] || 0}
-                                                            </td>
-                                                        ))}
-                                                        <td>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => handleToggleFavorito(produto.produto)}
+                                    {!selectedFavorito && (
+                                        <div className="input-wrapper" style={{ position: 'relative' }}>
+                                            <label className="input-label">🔍 Buscar para adicionar aos essenciais</label>
+                                            <Input
+                                                placeholder="Digite o nome do produto..."
+                                                value={searchTermFavoritos}
+                                                onChange={(e) => setSearchTermFavoritos(e.target.value)}
+                                            />
+
+                                            {searchTermFavoritos.length > 0 && (
+                                                <div className="search-results-dropdown">
+                                                    {matrizData?.produtos
+                                                        .filter(p =>
+                                                            p.produto.toLowerCase().includes(searchTermFavoritos.toLowerCase()) &&
+                                                            !favoritos.includes(p.produto)
+                                                        )
+                                                        .slice(0, 10) // Limit results
+                                                        .map((p, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="search-result-item"
+                                                                onClick={() => {
+                                                                    handleToggleFavorito(p.produto)
+                                                                    setSearchTermFavoritos('')
+                                                                }}
                                                             >
-                                                                🗑️
-                                                            </Button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                                <span>{p.produto}</span>
+                                                                <span className="plus-icon">➕</span>
+                                                            </div>
+                                                        ))}
+                                                    {matrizData?.produtos.filter(p =>
+                                                        p.produto.toLowerCase().includes(searchTermFavoritos.toLowerCase()) &&
+                                                        !favoritos.includes(p.produto)
+                                                    ).length === 0 && (
+                                                            <div className="search-result-empty">Nenhum produto encontrado</div>
+                                                        )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {selectedFavorito && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => setSelectedFavorito(null)}
+                                            style={{ marginBottom: 'var(--space-4)' }}
+                                        >
+                                            ← Voltar para Lista
+                                        </Button>
+                                    )}
+                                </div>
+
+                                {selectedFavorito ? (
+                                    // DETAILED VIEW FOR SELECTED FAVORITE
+                                    (() => {
+                                        const produtoData = matrizData?.produtos?.find(p => p.produto === selectedFavorito)
+                                        if (!produtoData) return <div>Produto não encontrado nos dados deste ano.</div>
+
+                                        // Prepare Chart Data
+                                        const labels = matrizData?.meses || []
+                                        const dataValues = labels.map(mes => produtoData[mes] || 0)
+
+                                        const chartData = {
+                                            labels,
+                                            datasets: [
+                                                {
+                                                    label: 'Vendas Mensais',
+                                                    data: dataValues,
+                                                    fill: true,
+                                                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                                                    borderColor: 'rgba(59, 130, 246, 1)',
+                                                    tension: 0.4
+                                                }
+                                            ]
+                                        }
+
+                                        const chartOptions = {
+                                            responsive: true,
+                                            plugins: {
+                                                legend: { display: false },
+                                                tooltip: {
+                                                    callbacks: {
+                                                        label: (context) => `Vendas: ${context.raw}`
+                                                    }
+                                                }
+                                            },
+                                            scales: {
+                                                y: {
+                                                    beginAtZero: true,
+                                                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                                    ticks: { color: '#9ca3af' }
+                                                },
+                                                x: {
+                                                    grid: { display: false },
+                                                    ticks: { color: '#9ca3af' }
+                                                }
+                                            }
+                                        }
+
+                                        // Calculate stats
+                                        const totalVendas = dataValues.reduce((a, b) => a + b, 0)
+                                        const mesesComVenda = dataValues.filter(v => v > 0).length
+                                        const mediaMensal = mesesComVenda > 0 ? Math.round(totalVendas / mesesComVenda) : 0
+
+                                        // Trend
+                                        const firstHalf = dataValues.slice(0, Math.ceil(dataValues.length / 2)).reduce((a, b) => a + b, 0)
+                                        const secondHalf = dataValues.slice(Math.ceil(dataValues.length / 2)).reduce((a, b) => a + b, 0)
+                                        const trend = firstHalf > 0 ? ((secondHalf - firstHalf) / firstHalf) * 100 : 0
+
+                                        return (
+                                            <div className="favorito-detail">
+                                                <div className="detail-header">
+                                                    <h3>⭐ {selectedFavorito}</h3>
+                                                    <Button
+                                                        variant="danger"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            handleToggleFavorito(selectedFavorito)
+                                                            setSelectedFavorito(null)
+                                                        }}
+                                                    >
+                                                        Remover dos Favoritos
+                                                    </Button>
+                                                </div>
+
+                                                <div className="stats-row" style={{ marginTop: 'var(--space-4)' }}>
+                                                    <Card className="stat-card">
+                                                        <div className="stat-icon blue">💰</div>
+                                                        <div className="stat-info">
+                                                            <span className="stat-label-dash">Total</span>
+                                                            <h3 className="stat-value-dash">{totalVendas}</h3>
+                                                        </div>
+                                                    </Card>
+                                                    <Card className="stat-card">
+                                                        <div className="stat-icon green">📅</div>
+                                                        <div className="stat-info">
+                                                            <span className="stat-label-dash">Média Mensal</span>
+                                                            <h3 className="stat-value-dash">{mediaMensal}</h3>
+                                                        </div>
+                                                    </Card>
+                                                    <Card className="stat-card">
+                                                        <div className="stat-icon orange">📈</div>
+                                                        <div className="stat-info">
+                                                            <span className="stat-label-dash">Tendência 2º Sem.</span>
+                                                            <h3 className="stat-value-dash" style={{ color: trend >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                                                                {trend > 0 ? '+' : ''}{Math.round(trend)}%
+                                                            </h3>
+                                                        </div>
+                                                    </Card>
+                                                </div>
+
+                                                <Card className="chart-card" style={{ marginTop: 'var(--space-6)' }}>
+                                                    <h4 className="chart-title">Desempenho Anual</h4>
+                                                    <div className="chart-container" style={{ height: '300px' }}>
+                                                        <Line data={chartData} options={chartOptions} />
+                                                    </div>
+                                                </Card>
+                                            </div>
+                                        )
+                                    })()
                                 ) : (
-                                    <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                                        Nenhum produto marcado como essencial
-                                    </p></Card>
+                                    // LIST VIEW
+                                    produtosFavoritos && produtosFavoritos.length > 0 ? (
+                                        <div className="favoritos-grid-list">
+                                            {produtosFavoritos.map((produto, idx) => {
+                                                // Quick stats for card
+                                                const total = matrizData.meses.reduce((sum, m) => sum + (produto[m] || 0), 0)
+                                                // Check trend
+                                                const last3Months = matrizData.meses.slice(-3).reduce((sum, m) => sum + (produto[m] || 0), 0)
+                                                const isStopped = last3Months === 0 && total > 0
+
+                                                return (
+                                                    <Card
+                                                        key={idx}
+                                                        className={`favorito-item-card ${isStopped ? 'stopped' : ''}`}
+                                                        onClick={() => setSelectedFavorito(produto.produto)}
+                                                        style={{ cursor: 'pointer', transition: 'transform 0.2s', borderLeft: isStopped ? '4px solid var(--color-danger)' : '4px solid var(--color-primary)' }}
+                                                    >
+                                                        <div className="favorito-card-content">
+                                                            <div className="favorito-info">
+                                                                <h4>⭐ {produto.produto}</h4>
+                                                                <span className="favorito-total">Total: {total} un</span>
+                                                            </div>
+                                                            <div className="favorito-status">
+                                                                {isStopped ? (
+                                                                    <span className="status-badge danger">Parou de Vender</span>
+                                                                ) : (
+                                                                    <span className="status-badge success">Ativo</span>
+                                                                )}
+                                                                <span className="click-hint">Ver detalhes →</span>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                )
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                                            Nenhum produto marcado como essencial. Use o seletor acima para adicionar.
+                                        </p></Card>
+                                    )
                                 )}
                             </div>
                         )}
