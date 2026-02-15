@@ -542,6 +542,75 @@
     font-weight: 600;
 }
 
+/* Group Action Buttons (edit/delete) */
+.grupo-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.grupo-card:hover .grupo-actions {
+    opacity: 1;
+}
+
+.grupo-action-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+}
+
+.grupo-action-btn.edit:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: scale(1.15);
+}
+
+.grupo-action-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.4);
+    transform: scale(1.15);
+}
+
+/* Inline edit input for group name */
+.grupo-edit-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) var(--space-3);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Add new group card */
+.grupo-card-add {
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.grupo-card-add:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    background: rgba(59, 130, 246, 0.06);
+}
+
+.grupo-add-icon {
+    font-size: 2rem;
+    margin-bottom: var(--space-1);
+}
+
 /* Group Detail View */
 .grupo-detail {
     animation: fadeIn 0.3s ease-in-out;

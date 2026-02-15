@@ -54,12 +54,29 @@ export default function SalesAnalysis({ userId }) {
     const [selectedGroup, setSelectedGroup] = useState(null)
     const [groupSearchTerm, setGroupSearchTerm] = useState('')
     const [groupProducts, setGroupProducts] = useState({}) // { groupId: ['produto1', 'produto2'] }
+    const [editingGroupId, setEditingGroupId] = useState(null)
+    const [editingGroupName, setEditingGroupName] = useState('')
+
+    const DEFAULT_GROUPS = [
+        { id: 'lixa_hookits', nome: 'LIXA E HOOKITS' },
+        { id: 'polimentos', nome: 'POLIMENTOS' },
+        { id: 'fitas', nome: 'FITAS' },
+        { id: 'thinner_diluentes', nome: 'THINNER E DILUENTES' },
+        { id: 'pigmentos', nome: 'PIGMENTOS' },
+        { id: 'sikas', nome: 'SIKAS' },
+        { id: 'abrasivos', nome: 'ABRASIVOS' },
+        { id: 'tintas', nome: 'TINTAS' },
+        { id: 'primer_verniz', nome: 'PRIMER E VERNIZ' },
+        { id: 'complementos', nome: 'COMPLEMENTOS' },
+    ]
+
+    const [customGroups, setCustomGroups] = useState(DEFAULT_GROUPS)
     // Load clients on mount
     useEffect(() => {
         loadClientes()
     }, [])
 
-    // Load group products from localStorage when client changes
+    // Load group products and custom groups from localStorage when client changes
     useEffect(() => {
         if (clienteSelecionado) {
             const saved = localStorage.getItem(`groupProducts_${clienteSelecionado.id}`)
@@ -67,6 +84,12 @@ export default function SalesAnalysis({ userId }) {
                 try { setGroupProducts(JSON.parse(saved)) } catch { setGroupProducts({}) }
             } else {
                 setGroupProducts({})
+            }
+            const savedGroups = localStorage.getItem(`customGroups_${clienteSelecionado.id}`)
+            if (savedGroups) {
+                try { setCustomGroups(JSON.parse(savedGroups)) } catch { setCustomGroups(DEFAULT_GROUPS) }
+            } else {
+                setCustomGroups(DEFAULT_GROUPS)
             }
         }
     }, [clienteSelecionado])
@@ -90,6 +113,42 @@ export default function SalesAnalysis({ userId }) {
         const current = groupProducts[groupId] || []
         const updated = { ...groupProducts, [groupId]: current.filter(p => p !== produtoNome) }
         saveGroupProducts(updated)
+    }
+
+    const saveCustomGroups = (groups) => {
+        setCustomGroups(groups)
+        if (clienteSelecionado) {
+            localStorage.setItem(`customGroups_${clienteSelecionado.id}`, JSON.stringify(groups))
+        }
+    }
+
+    const handleRenameGroup = (groupId, newName) => {
+        if (!newName.trim()) return
+        const updated = customGroups.map(g => g.id === groupId ? { ...g, nome: newName.trim().toUpperCase() } : g)
+        saveCustomGroups(updated)
+        setEditingGroupId(null)
+        setEditingGroupName('')
+        if (selectedGroup?.id === groupId) {
+            setSelectedGroup({ ...selectedGroup, nome: newName.trim().toUpperCase() })
+        }
+    }
+
+    const handleAddGroup = () => {
+        const nome = prompt('Nome da nova sub pasta:')
+        if (!nome || !nome.trim()) return
+        const id = 'custom_' + Date.now()
+        const newGroup = { id, nome: nome.trim().toUpperCase() }
+        saveCustomGroups([...customGroups, newGroup])
+    }
+
+    const handleDeleteGroup = (groupId) => {
+        if (!window.confirm('Tem certeza que deseja excluir esta sub pasta?')) return
+        const updated = customGroups.filter(g => g.id !== groupId)
+        saveCustomGroups(updated)
+        // Also clean up associated products
+        const updatedProducts = { ...groupProducts }
+        delete updatedProducts[groupId]
+        saveGroupProducts(updatedProducts)
     }
 
     // Load years when client changes
@@ -696,24 +755,37 @@ export default function SalesAnalysis({ userId }) {
 
                                         {/* Grupos Grid */}
                                         <div className="grupos-grid">
-                                            {[
-                                                { id: 'todos', nome: 'TODOS PRODUTOS', keywords: [] },
-                                                { id: 'lixa_hookits', nome: 'LIXA E HOOKITS', keywords: [] },
-                                                { id: 'polimentos', nome: 'POLIMENTOS', keywords: [] },
-                                                { id: 'fitas', nome: 'FITAS', keywords: [] },
-                                                { id: 'thinner_diluentes', nome: 'THINNER E DILUENTES', keywords: [] },
-                                                { id: 'pigmentos', nome: 'PIGMENTOS', keywords: [] },
-                                                { id: 'sikas', nome: 'SIKAS', keywords: [] },
-                                                { id: 'abrasivos', nome: 'ABRASIVOS', keywords: [] },
-                                                { id: 'tintas', nome: 'TINTAS', keywords: [] },
-                                                { id: 'primer_verniz', nome: 'PRIMER E VERNIZ', keywords: [] },
-                                                { id: 'complementos', nome: 'COMPLEMENTOS', keywords: [] },
-                                            ].map(grupo => {
-                                                const produtosDoGrupo = (() => {
-                                                    if (grupo.id === 'todos') return matrizData?.produtos || []
-                                                    const savedNames = groupProducts[grupo.id] || []
-                                                    return (matrizData?.produtos || []).filter(p => savedNames.includes(p.produto))
-                                                })()
+                                            {/* TODOS PRODUTOS - always first */}
+                                            {(() => {
+                                                const todosGrupo = { id: 'todos', nome: 'TODOS PRODUTOS' }
+                                                const produtosDoGrupo = matrizData?.produtos || []
+                                                const totalUnidades = produtosDoGrupo.reduce((sum, p) => {
+                                                    return sum + (matrizData?.meses || []).reduce((s, m) => s + (p[m] || 0), 0)
+                                                }, 0)
+                                                return (
+                                                    <Card
+                                                        key="todos"
+                                                        className="grupo-card"
+                                                        hover
+                                                        onClick={() => {
+                                                            setSelectedGroup(todosGrupo)
+                                                            setGroupSearchTerm('')
+                                                        }}
+                                                        style={{ cursor: 'pointer' }}
+                                                    >
+                                                        <div className="grupo-card-content">
+                                                            <h4>{todosGrupo.nome}</h4>
+                                                            <p className="grupo-stats">{produtosDoGrupo.length} produtos</p>
+                                                            <p className="grupo-total">{totalUnidades} un. total</p>
+                                                        </div>
+                                                    </Card>
+                                                )
+                                            })()}
+
+                                            {/* Dynamic subfolders */}
+                                            {customGroups.map(grupo => {
+                                                const savedNames = groupProducts[grupo.id] || []
+                                                const produtosDoGrupo = (matrizData?.produtos || []).filter(p => savedNames.includes(p.produto))
                                                 const totalUnidades = produtosDoGrupo.reduce((sum, p) => {
                                                     return sum + (matrizData?.meses || []).reduce((s, m) => s + (p[m] || 0), 0)
                                                 }, 0)
@@ -723,19 +795,72 @@ export default function SalesAnalysis({ userId }) {
                                                         className="grupo-card"
                                                         hover
                                                         onClick={() => {
-                                                            setSelectedGroup(grupo)
-                                                            setGroupSearchTerm('')
+                                                            if (editingGroupId !== grupo.id) {
+                                                                setSelectedGroup(grupo)
+                                                                setGroupSearchTerm('')
+                                                            }
                                                         }}
                                                         style={{ cursor: 'pointer' }}
                                                     >
                                                         <div className="grupo-card-content">
-                                                            <h4>{grupo.nome}</h4>
+                                                            {editingGroupId === grupo.id ? (
+                                                                <input
+                                                                    className="grupo-edit-input"
+                                                                    value={editingGroupName}
+                                                                    onChange={(e) => setEditingGroupName(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') handleRenameGroup(grupo.id, editingGroupName)
+                                                                        if (e.key === 'Escape') { setEditingGroupId(null); setEditingGroupName('') }
+                                                                    }}
+                                                                    onBlur={() => handleRenameGroup(grupo.id, editingGroupName)}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    autoFocus
+                                                                />
+                                                            ) : (
+                                                                <h4>{grupo.nome}</h4>
+                                                            )}
                                                             <p className="grupo-stats">{produtosDoGrupo.length} produtos</p>
                                                             <p className="grupo-total">{totalUnidades} un. total</p>
+                                                            <div className="grupo-actions">
+                                                                <button
+                                                                    className="grupo-action-btn edit"
+                                                                    title="Renomear sub pasta"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        setEditingGroupId(grupo.id)
+                                                                        setEditingGroupName(grupo.nome)
+                                                                    }}
+                                                                >
+                                                                    ✏️
+                                                                </button>
+                                                                <button
+                                                                    className="grupo-action-btn delete"
+                                                                    title="Excluir sub pasta"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        handleDeleteGroup(grupo.id)
+                                                                    }}
+                                                                >
+                                                                    🗑️
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </Card>
                                                 )
                                             })}
+
+                                            {/* Add new subfolder card */}
+                                            <Card
+                                                className="grupo-card grupo-card-add"
+                                                hover
+                                                onClick={handleAddGroup}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <div className="grupo-card-content">
+                                                    <span className="grupo-add-icon">➕</span>
+                                                    <h4>Nova Sub Pasta</h4>
+                                                </div>
+                                            </Card>
                                         </div>
 
                                         {/* Tabela geral (filtrada) abaixo dos grupos */}
