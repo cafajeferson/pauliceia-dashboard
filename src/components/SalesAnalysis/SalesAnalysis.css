@@ -645,3 +645,100 @@
 .remove-product-btn:hover {
     background: rgba(239, 68, 68, 0.35);
 }
+
+/* ===== Análise de Vendas (Quedas / Parou) ===== */
+.analise-grupo-section {
+    margin-bottom: var(--space-6);
+}
+
+.analise-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-4);
+}
+
+.analise-card {
+    padding: var(--space-4);
+}
+
+.analise-card.queda {
+    border-left: 3px solid rgba(245, 158, 11, 0.7);
+}
+
+.analise-card.parou {
+    border-left: 3px solid rgba(239, 68, 68, 0.7);
+}
+
+.analise-card-title {
+    margin: 0 0 var(--space-3) 0;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.analise-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.analise-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.analise-item-name {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analise-item-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+.analise-valores {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+}
+
+.analise-badge {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.analise-badge.queda {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.analise-badge.parou {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.analise-badge.quedas-count {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+}
+
+@media (max-width: 768px) {
+    .analise-grid {
+        grid-template-columns: 1fr;
+    }
+}

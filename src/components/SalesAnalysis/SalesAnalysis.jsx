@@ -924,6 +924,102 @@ export default function SalesAnalysis({ userId }) {
                                                         </Card>
                                                     )}
 
+                                                    {/* Sales Analysis: Drops & Stopped — ALL months */}
+                                                    {produtosDoGrupo.length > 0 && meses.length >= 2 && (() => {
+                                                        const primeiroMes = meses[0]
+                                                        const ultimoMes = meses[meses.length - 1]
+
+                                                        // Products with overall declining trend (first month vs last month)
+                                                        const emQueda = produtosDoGrupo
+                                                            .map(p => {
+                                                                const primeiro = p[primeiroMes] || 0
+                                                                const ultimo = p[ultimoMes] || 0
+                                                                const diffGeral = primeiro > 0 ? Math.round(((ultimo - primeiro) / primeiro) * 100) : 0
+
+                                                                // Count how many months had drops vs previous month
+                                                                let quedas = 0
+                                                                for (let i = 1; i < meses.length; i++) {
+                                                                    const curr = p[meses[i]] || 0
+                                                                    const prev = p[meses[i - 1]] || 0
+                                                                    if (curr < prev && prev > 0) quedas++
+                                                                }
+
+                                                                // Build month-by-month values
+                                                                const valores = meses.map(m => p[m] || 0)
+
+                                                                return { nome: p.produto, primeiro, ultimo, diffGeral, quedas, valores }
+                                                            })
+                                                            .filter(p => p.primeiro > 0 && p.ultimo < p.primeiro)
+                                                            .sort((a, b) => a.diffGeral - b.diffGeral)
+
+                                                        // Products that stopped being purchased (0 in last month but had sales before)
+                                                        const parouDeComprar = produtosDoGrupo
+                                                            .filter(p => {
+                                                                const ultimo = p[ultimoMes] || 0
+                                                                if (ultimo > 0) return false
+                                                                return meses.slice(0, -1).some(m => (p[m] || 0) > 0)
+                                                            })
+                                                            .map(p => {
+                                                                const ultimaCompra = [...meses].reverse().find(m => (p[m] || 0) > 0)
+                                                                const totalAnterior = meses.reduce((s, m) => s + (p[m] || 0), 0)
+                                                                return { nome: p.produto, ultimaCompra, totalAnterior }
+                                                            })
+                                                            .sort((a, b) => b.totalAnterior - a.totalAnterior)
+
+                                                        return (emQueda.length > 0 || parouDeComprar.length > 0) ? (
+                                                            <div className="analise-grupo-section">
+                                                                <h4 style={{ marginBottom: 'var(--space-4)', color: 'var(--color-text-primary)' }}>
+                                                                    📉 Análise de Vendas — Todos os Meses ({primeiroMes} a {ultimoMes})
+                                                                </h4>
+
+                                                                <div className="analise-grid">
+                                                                    {/* Produtos em queda geral */}
+                                                                    {emQueda.length > 0 && (
+                                                                        <Card className="analise-card queda">
+                                                                            <h5 className="analise-card-title">⚠️ Produtos em Queda Geral ({emQueda.length})</h5>
+                                                                            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' }}>
+                                                                                Comparação {primeiroMes} vs {ultimoMes}
+                                                                            </p>
+                                                                            <div className="analise-list">
+                                                                                {emQueda.map((p, i) => (
+                                                                                    <div key={i} className="analise-item">
+                                                                                        <span className="analise-item-name">{p.nome}</span>
+                                                                                        <div className="analise-item-info">
+                                                                                            <span className="analise-valores">{p.primeiro} → {p.ultimo}</span>
+                                                                                            <span className="analise-badge queda">{p.diffGeral}%</span>
+                                                                                            <span className="analise-badge quedas-count">{p.quedas} queda{p.quedas !== 1 ? 's' : ''}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </Card>
+                                                                    )}
+
+                                                                    {/* Parou de comprar */}
+                                                                    {parouDeComprar.length > 0 && (
+                                                                        <Card className="analise-card parou">
+                                                                            <h5 className="analise-card-title">🚫 Parou de Comprar ({parouDeComprar.length})</h5>
+                                                                            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' }}>
+                                                                                Produtos com 0 vendas em {ultimoMes}
+                                                                            </p>
+                                                                            <div className="analise-list">
+                                                                                {parouDeComprar.map((p, i) => (
+                                                                                    <div key={i} className="analise-item">
+                                                                                        <span className="analise-item-name">{p.nome}</span>
+                                                                                        <div className="analise-item-info">
+                                                                                            <span className="analise-valores">Total: {p.totalAnterior} un.</span>
+                                                                                            <span className="analise-badge parou">Última: {p.ultimaCompra}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </Card>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ) : null
+                                                    })()}
+
                                                     {/* Table */}
                                                     {produtosDoGrupo.length > 0 ? (
                                                         <div className="matriz-container">
