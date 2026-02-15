@@ -23,7 +23,7 @@ export default function Admin() {
         senha: '',
         tipo: 'funcionario',
         cargo: 'colorista',
-        cargo: 'colorista',
+
         ativo: 1
     })
     const [selectedUserForReports, setSelectedUserForReports] = useState('todos')
