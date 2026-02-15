@@ -1020,7 +1020,12 @@ export default function SalesAnalysis({ userId }) {
                                                     },
                                                     y: {
                                                         beginAtZero: true,
-                                                        ticks: { color: 'rgba(255,255,255,0.7)' },
+                                                        ticks: {
+                                                            color: 'rgba(255,255,255,0.7)',
+                                                            precision: 0,
+                                                            stepSize: 1,
+                                                            callback: (value) => Number.isInteger(value) ? value : null
+                                                        },
                                                         grid: { color: 'rgba(255,255,255,0.08)' }
                                                     }
                                                 }
@@ -1302,7 +1307,12 @@ export default function SalesAnalysis({ userId }) {
                                                 y: {
                                                     beginAtZero: true,
                                                     grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                                                    ticks: { color: '#9ca3af' }
+                                                    ticks: {
+                                                        color: '#9ca3af',
+                                                        precision: 0,
+                                                        stepSize: 1,
+                                                        callback: (value) => Number.isInteger(value) ? value : null
+                                                    }
                                                 },
                                                 x: {
                                                     grid: { display: false },
