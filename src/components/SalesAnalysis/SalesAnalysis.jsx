@@ -51,11 +51,46 @@ export default function SalesAnalysis({ userId }) {
     const [analiseData, setAnaliseData] = useState(null)
     const [selectedFavorito, setSelectedFavorito] = useState(null)
     const [searchTermFavoritos, setSearchTermFavoritos] = useState('') // Search term for adding favorites
-
+    const [selectedGroup, setSelectedGroup] = useState(null)
+    const [groupSearchTerm, setGroupSearchTerm] = useState('')
+    const [groupProducts, setGroupProducts] = useState({}) // { groupId: ['produto1', 'produto2'] }
     // Load clients on mount
     useEffect(() => {
         loadClientes()
     }, [])
+
+    // Load group products from localStorage when client changes
+    useEffect(() => {
+        if (clienteSelecionado) {
+            const saved = localStorage.getItem(`groupProducts_${clienteSelecionado.id}`)
+            if (saved) {
+                try { setGroupProducts(JSON.parse(saved)) } catch { setGroupProducts({}) }
+            } else {
+                setGroupProducts({})
+            }
+        }
+    }, [clienteSelecionado])
+
+    const saveGroupProducts = (updated) => {
+        setGroupProducts(updated)
+        if (clienteSelecionado) {
+            localStorage.setItem(`groupProducts_${clienteSelecionado.id}`, JSON.stringify(updated))
+        }
+    }
+
+    const addProductToGroup = (groupId, produtoNome) => {
+        const current = groupProducts[groupId] || []
+        if (!current.includes(produtoNome)) {
+            const updated = { ...groupProducts, [groupId]: [...current, produtoNome] }
+            saveGroupProducts(updated)
+        }
+    }
+
+    const removeProductFromGroup = (groupId, produtoNome) => {
+        const current = groupProducts[groupId] || []
+        const updated = { ...groupProducts, [groupId]: current.filter(p => p !== produtoNome) }
+        saveGroupProducts(updated)
+    }
 
     // Load years when client changes
     useEffect(() => {
@@ -647,45 +682,295 @@ export default function SalesAnalysis({ userId }) {
                         {/* Matriz Tab */}
                         {activeTab === 'matriz' && (
                             <div>
-                                <div className="matriz-controls">
-                                    <Input
-                                        placeholder="Filtrar produto..."
-                                        value={filtro}
-                                        onChange={(e) => setFiltro(e.target.value)}
-                                        icon={<span>🔍</span>}
-                                    />
-                                </div>
-                                {loading ? (
-                                    <div className="loading-container"><div className="loading-spinner"></div></div>
-                                ) : matrizData && produtosFiltrados ? (
-                                    <div className="matriz-container">
-                                        <table className="matriz-table">
-                                            <thead>
-                                                <tr>
-                                                    <th className="produto-col">Produto</th>
-                                                    {matrizData.meses.map(mes => (
-                                                        <th key={mes}>{mes}</th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {produtosFiltrados.map((produto, idx) => (
-                                                    <tr key={idx}>
-                                                        <td className="produto-col">{produto.produto}</td>
-                                                        {matrizData.meses.map(mes => (
-                                                            <td key={mes} className={getCellColor(produto.produto, mes, matrizData.meses)}>
-                                                                {produto[mes] || 0}
-                                                            </td>
+                                {!selectedGroup ? (
+                                    /* Nível 1 — Grid de Grupos */
+                                    <div>
+                                        <div className="matriz-controls">
+                                            <Input
+                                                placeholder="Filtrar produto (tabela geral)..."
+                                                value={filtro}
+                                                onChange={(e) => setFiltro(e.target.value)}
+                                                icon={<span>🔍</span>}
+                                            />
+                                        </div>
+
+                                        {/* Grupos Grid */}
+                                        <div className="grupos-grid">
+                                            {[
+                                                { id: 'todos', nome: 'TODOS PRODUTOS', keywords: [] },
+                                                { id: 'lixa_hookits', nome: 'LIXA E HOOKITS', keywords: [] },
+                                                { id: 'polimentos', nome: 'POLIMENTOS', keywords: [] },
+                                                { id: 'fitas', nome: 'FITAS', keywords: [] },
+                                                { id: 'thinner_diluentes', nome: 'THINNER E DILUENTES', keywords: [] },
+                                                { id: 'pigmentos', nome: 'PIGMENTOS', keywords: [] },
+                                                { id: 'sikas', nome: 'SIKAS', keywords: [] },
+                                                { id: 'abrasivos', nome: 'ABRASIVOS', keywords: [] },
+                                                { id: 'tintas', nome: 'TINTAS', keywords: [] },
+                                                { id: 'primer_verniz', nome: 'PRIMER E VERNIZ', keywords: [] },
+                                                { id: 'complementos', nome: 'COMPLEMENTOS', keywords: [] },
+                                            ].map(grupo => {
+                                                const produtosDoGrupo = (() => {
+                                                    if (grupo.id === 'todos') return matrizData?.produtos || []
+                                                    const savedNames = groupProducts[grupo.id] || []
+                                                    return (matrizData?.produtos || []).filter(p => savedNames.includes(p.produto))
+                                                })()
+                                                const totalUnidades = produtosDoGrupo.reduce((sum, p) => {
+                                                    return sum + (matrizData?.meses || []).reduce((s, m) => s + (p[m] || 0), 0)
+                                                }, 0)
+                                                return (
+                                                    <Card
+                                                        key={grupo.id}
+                                                        className="grupo-card"
+                                                        hover
+                                                        onClick={() => {
+                                                            setSelectedGroup(grupo)
+                                                            setGroupSearchTerm('')
+                                                        }}
+                                                        style={{ cursor: 'pointer' }}
+                                                    >
+                                                        <div className="grupo-card-content">
+                                                            <h4>{grupo.nome}</h4>
+                                                            <p className="grupo-stats">{produtosDoGrupo.length} produtos</p>
+                                                            <p className="grupo-total">{totalUnidades} un. total</p>
+                                                        </div>
+                                                    </Card>
+                                                )
+                                            })}
+                                        </div>
+
+                                        {/* Tabela geral (filtrada) abaixo dos grupos */}
+                                        {matrizData && produtosFiltrados && filtro.length > 0 && (
+                                            <div className="matriz-container" style={{ marginTop: 'var(--space-6)' }}>
+                                                <table className="matriz-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th className="produto-col">Produto</th>
+                                                            {matrizData.meses.map(mes => (
+                                                                <th key={mes}>{mes}</th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {produtosFiltrados.map((produto, idx) => (
+                                                            <tr key={idx}>
+                                                                <td className="produto-col">{produto.produto}</td>
+                                                                {matrizData.meses.map(mes => (
+                                                                    <td key={mes} className={getCellColor(produto.produto, mes, matrizData.meses)}>
+                                                                        {produto[mes] || 0}
+                                                                    </td>
+                                                                ))}
+                                                            </tr>
                                                         ))}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+
+                                        {!matrizData && (
+                                            <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                                                Nenhum dado de vendas. Importe os arquivos CSV primeiro.
+                                            </p></Card>
+                                        )}
                                     </div>
                                 ) : (
-                                    <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                                        Nenhum dado de vendas. Importe os arquivos CSV primeiro.
-                                    </p></Card>
+                                    /* Nível 2 — Dentro do Grupo */
+                                    <div className="grupo-detail">
+                                        <div className="detail-header">
+                                            <h3>{selectedGroup.nome}</h3>
+                                            <Button variant="ghost" onClick={() => setSelectedGroup(null)}>← Voltar aos Grupos</Button>
+                                        </div>
+
+                                        {selectedGroup.id !== 'todos' && (
+                                            <>
+                                                {/* Search to ADD products */}
+                                                <div className="matriz-controls" style={{ position: 'relative' }}>
+                                                    <Input
+                                                        placeholder={`🔍 Buscar produto para adicionar em ${selectedGroup.nome}...`}
+                                                        value={groupSearchTerm}
+                                                        onChange={(e) => setGroupSearchTerm(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                {/* Search Results with + button */}
+                                                {groupSearchTerm.length > 0 && (() => {
+                                                    const savedNames = groupProducts[selectedGroup.id] || []
+                                                    const results = (matrizData?.produtos || []).filter(p =>
+                                                        p.produto.toLowerCase().includes(groupSearchTerm.toLowerCase())
+                                                    ).sort((a, b) => a.produto.localeCompare(b.produto))
+                                                    return results.length > 0 ? (
+                                                        <Card className="search-results-card">
+                                                            <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)', fontSize: 'var(--font-size-sm)' }}>
+                                                                {results.length} resultado(s) — clique ➕ para adicionar à pasta
+                                                            </p>
+                                                            <div className="search-results-list">
+                                                                {results.map((p, idx) => {
+                                                                    const isAdded = savedNames.includes(p.produto)
+                                                                    return (
+                                                                        <div key={idx} className={`search-result-item ${isAdded ? 'already-added' : ''}`}>
+                                                                            <span className="search-result-name">{p.produto}</span>
+                                                                            {isAdded ? (
+                                                                                <span className="added-badge">✅ Adicionado</span>
+                                                                            ) : (
+                                                                                <button
+                                                                                    className="add-product-btn"
+                                                                                    onClick={() => addProductToGroup(selectedGroup.id, p.produto)}
+                                                                                    title="Adicionar à pasta"
+                                                                                >
+                                                                                    ➕
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </Card>
+                                                    ) : (
+                                                        <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Nenhum produto encontrado.</p></Card>
+                                                    )
+                                                })()}
+                                            </>
+                                        )}
+
+                                        {(() => {
+                                            // Get products for this group
+                                            let produtosDoGrupo
+                                            if (selectedGroup.id === 'todos') {
+                                                produtosDoGrupo = [...(matrizData?.produtos || [])].sort((a, b) => a.produto.localeCompare(b.produto))
+                                            } else {
+                                                const savedNames = groupProducts[selectedGroup.id] || []
+                                                produtosDoGrupo = (matrizData?.produtos || []).filter(p => savedNames.includes(p.produto)).sort((a, b) => a.produto.localeCompare(b.produto))
+                                            }
+
+                                            const meses = matrizData?.meses || []
+
+                                            // Chart data: total of group per month
+                                            const chartData = {
+                                                labels: meses,
+                                                datasets: [{
+                                                    label: `Vendas - ${selectedGroup.nome}`,
+                                                    data: meses.map(m => produtosDoGrupo.reduce((sum, p) => sum + (p[m] || 0), 0)),
+                                                    borderColor: 'rgba(59, 130, 246, 1)',
+                                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                                    tension: 0.4,
+                                                    fill: true,
+                                                    pointRadius: 5,
+                                                    pointHoverRadius: 8,
+                                                }]
+                                            }
+
+                                            const chartOptions = {
+                                                responsive: true,
+                                                maintainAspectRatio: false,
+                                                plugins: {
+                                                    legend: { display: false },
+                                                    title: {
+                                                        display: true,
+                                                        text: `Desempenho de Vendas - ${selectedGroup.nome}`,
+                                                        color: 'rgba(255,255,255,0.9)',
+                                                        font: { size: 16, weight: 'bold' }
+                                                    },
+                                                    tooltip: {
+                                                        backgroundColor: 'rgba(0,0,0,0.85)',
+                                                        titleFont: { size: 14 },
+                                                        bodyFont: { size: 13 },
+                                                    }
+                                                },
+                                                scales: {
+                                                    x: {
+                                                        ticks: { color: 'rgba(255,255,255,0.7)' },
+                                                        grid: { color: 'rgba(255,255,255,0.05)' }
+                                                    },
+                                                    y: {
+                                                        beginAtZero: true,
+                                                        ticks: { color: 'rgba(255,255,255,0.7)' },
+                                                        grid: { color: 'rgba(255,255,255,0.08)' }
+                                                    }
+                                                }
+                                            }
+
+                                            return (
+                                                <>
+                                                    {/* Summary Cards */}
+                                                    <div className="grupo-summary">
+                                                        <Card className="grupo-summary-card">
+                                                            <span className="stat-icon">📦</span>
+                                                            <div>
+                                                                <p className="stat-label">Produtos</p>
+                                                                <h2 className="stat-value">{produtosDoGrupo.length}</h2>
+                                                            </div>
+                                                        </Card>
+                                                        <Card className="grupo-summary-card">
+                                                            <span className="stat-icon">📊</span>
+                                                            <div>
+                                                                <p className="stat-label">Total Vendido</p>
+                                                                <h2 className="stat-value">{produtosDoGrupo.reduce((sum, p) => meses.reduce((s, m) => s + (p[m] || 0), sum), 0)}</h2>
+                                                            </div>
+                                                        </Card>
+                                                        <Card className="grupo-summary-card">
+                                                            <span className="stat-icon">📅</span>
+                                                            <div>
+                                                                <p className="stat-label">Meses</p>
+                                                                <h2 className="stat-value">{meses.length}</h2>
+                                                            </div>
+                                                        </Card>
+                                                    </div>
+
+                                                    {/* Chart */}
+                                                    {meses.length > 0 && produtosDoGrupo.length > 0 && (
+                                                        <Card className="grupo-chart-card">
+                                                            <div style={{ height: '300px' }}>
+                                                                <Line data={chartData} options={chartOptions} />
+                                                            </div>
+                                                        </Card>
+                                                    )}
+
+                                                    {/* Table */}
+                                                    {produtosDoGrupo.length > 0 ? (
+                                                        <div className="matriz-container">
+                                                            <table className="matriz-table">
+                                                                <thead>
+                                                                    <tr>
+                                                                        {selectedGroup.id !== 'todos' && <th style={{ width: '40px' }}></th>}
+                                                                        <th className="produto-col">Produto</th>
+                                                                        {meses.map(mes => (
+                                                                            <th key={mes}>{mes}</th>
+                                                                        ))}
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {produtosDoGrupo.map((produto, idx) => (
+                                                                        <tr key={idx}>
+                                                                            {selectedGroup.id !== 'todos' && (
+                                                                                <td>
+                                                                                    <button
+                                                                                        className="remove-product-btn"
+                                                                                        onClick={() => removeProductFromGroup(selectedGroup.id, produto.produto)}
+                                                                                        title="Remover da pasta"
+                                                                                    >
+                                                                                        ✕
+                                                                                    </button>
+                                                                                </td>
+                                                                            )}
+                                                                            <td className="produto-col">{produto.produto}</td>
+                                                                            {meses.map(mes => (
+                                                                                <td key={mes} className={getCellColor(produto.produto, mes, meses)}>
+                                                                                    {produto[mes] || 0}
+                                                                                </td>
+                                                                            ))}
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    ) : (
+                                                        <Card><p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                                                            {selectedGroup.id === 'todos' ? 'Nenhum dado de vendas.' : 'Nenhum produto adicionado. Use a busca acima para adicionar produtos a esta pasta.'}
+                                                        </p></Card>
+                                                    )}
+                                                </>
+                                            )
+                                        })()}
+                                    </div>
                                 )}
                             </div>
                         )}
