@@ -267,6 +267,35 @@ export const salesService = {
         return true
     },
 
+    // Delete year folder + all its sales
+    async deletePastaAno(clienteId, ano) {
+        // 1. Delete all sales for this year
+        const { error: errorVendas } = await supabase
+            .from('vendas')
+            .delete()
+            .eq('cliente_id', clienteId)
+            .eq('ano_referencia', ano)
+
+        if (errorVendas) {
+            console.error('Error deleting year sales:', errorVendas)
+            return false
+        }
+
+        // 2. Delete the year folder record
+        const { error: errorAno } = await supabase
+            .from('vendas_anos')
+            .delete()
+            .eq('cliente_id', clienteId)
+            .eq('ano', ano)
+
+        if (errorAno) {
+            console.error('Error deleting year folder:', errorAno)
+            return false
+        }
+
+        return true
+    },
+
     // Favorites (Essenciais)
     async getFavoritos(clienteId) {
         const { data, error } = await supabase

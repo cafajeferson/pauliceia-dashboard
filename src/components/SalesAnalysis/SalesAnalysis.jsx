@@ -597,6 +597,35 @@ export default function SalesAnalysis({ userId }) {
                             >
                                 📁 Criar Pasta do Ano
                             </Button>
+                            {anoSelecionado && (
+                                <Button
+                                    variant="danger"
+                                    onClick={async () => {
+                                        const confirma = window.confirm(
+                                            `Excluir a pasta do ano ${anoSelecionado}?\n\nIsso vai apagar TODAS as vendas de ${anoSelecionado} do cliente "${clienteSelecionado.nome}". Esta ação não pode ser desfeita.`
+                                        )
+                                        if (!confirma) return
+                                        try {
+                                            const ok = await salesService.deletePastaAno(clienteSelecionado.id, anoSelecionado)
+                                            if (ok) {
+                                                alert(`Pasta ${anoSelecionado} excluída com sucesso!`)
+                                                setAnoSelecionado(null)
+                                                setVendas([])
+                                                setMatrizData(null)
+                                                await loadAnos()
+                                            } else {
+                                                alert('Erro ao excluir a pasta do ano.')
+                                            }
+                                        } catch (error) {
+                                            console.error('Erro ao excluir ano:', error)
+                                            alert('Erro ao excluir a pasta do ano')
+                                        }
+                                    }}
+                                    title="Excluir Pasta do Ano"
+                                >
+                                    🗑️ Excluir Pasta do Ano
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
