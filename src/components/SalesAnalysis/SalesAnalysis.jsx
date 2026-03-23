@@ -320,8 +320,7 @@ export default function SalesAnalysis({ userId }) {
                     cliente_id: clienteSelecionado.id,
                     ano_referencia: anoSelecionado,
                     arquivo_origem: item.name,
-                    ...d,
-                    valor_total: d.valor // Map parseCSV 'valor' to DB 'valor_total'
+                    ...d
                 }))
 
                 allVendas.push(...records)
