@@ -146,42 +146,53 @@ export const salesService = {
 
             // Check which products already exist (in batches to avoid URL overflow)
             const BATCH_SIZE = 200
-            const existingCodigos = new Set()
+            const existingMap = {} // codigo -> nome atual no banco
 
             for (let i = 0; i < produtosList.length; i += BATCH_SIZE) {
                 const batch = produtosList.slice(i, i + BATCH_SIZE)
                 const { data: existingProdutos } = await supabase
                     .from('produtos')
-                    .select('codigo')
+                    .select('codigo, nome')
                     .in('codigo', batch)
-                
-                existingProdutos?.forEach(p => existingCodigos.add(p.codigo))
+
+                existingProdutos?.forEach(p => { existingMap[p.codigo] = p.nome })
             }
 
-            // Insert only new products
+            // Insert new products
             const newProdutos = produtosList
-                .filter(codigo => !existingCodigos.has(codigo))
+                .filter(codigo => !(codigo in existingMap))
                 .map(codigo => ({
                     codigo: codigo,
-                    nome: produtosUnicos[codigo] || codigo, // Use the captured name
+                    nome: produtosUnicos[codigo] || codigo,
                     descricao: 'Produto importado automaticamente do CSV'
                 }))
 
             if (newProdutos.length > 0) {
                 if (onProgress) onProgress(`Cadastrando ${newProdutos.length} novos produtos...`)
-                
-                // Insert in batches
                 for (let i = 0; i < newProdutos.length; i += BATCH_SIZE) {
                     const batch = newProdutos.slice(i, i + BATCH_SIZE)
-                    const { error } = await supabase
-                        .from('produtos')
-                        .insert(batch)
-
+                    const { error } = await supabase.from('produtos').insert(batch)
                     if (error) console.warn('⚠️ Error batch inserting products:', error)
                 }
-                console.log(`✅ Auto-registered ${newProdutos.length} new products`)
-            } else {
-                console.log('✅ All products already registered')
+            }
+
+            // Update products where nome = codigo (saved without description) if we now have a real name
+            const toUpdate = produtosList.filter(codigo =>
+                codigo in existingMap &&
+                existingMap[codigo] === codigo &&
+                produtosUnicos[codigo] &&
+                produtosUnicos[codigo] !== codigo
+            )
+
+            if (toUpdate.length > 0) {
+                if (onProgress) onProgress(`Atualizando nomes de ${toUpdate.length} produtos...`)
+                for (const codigo of toUpdate) {
+                    await supabase
+                        .from('produtos')
+                        .update({ nome: produtosUnicos[codigo] })
+                        .eq('codigo', codigo)
+                }
+                console.log(`✅ Updated names for ${toUpdate.length} products`)
             }
         } catch (error) {
             console.error('❌ Error in autoRegisterProdutos:', error)
