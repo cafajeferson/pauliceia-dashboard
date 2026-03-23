@@ -49,23 +49,21 @@ export const salesService = {
         // Get all unique product codes from sales
         const produtoCodigos = [...new Set(vendasData.map(v => v.produto))]
 
-        // Fetch product names for these codes
-        const { data: produtosData, error: produtosError } = await supabase
-            .from('produtos')
-            .select('codigo, nome')
-            .in('codigo', produtoCodigos)
-
-        if (produtosError) {
-            console.warn('Error fetching product names:', produtosError)
-            // Continue without product names
-        }
-
-        // Create a map of codigo -> nome
+        // Fetch product names in batches to avoid URL length limit
         const produtosMap = {}
-        if (produtosData) {
-            produtosData.forEach(p => {
-                produtosMap[p.codigo] = p.nome
-            })
+        const PROD_BATCH = 200
+        for (let i = 0; i < produtoCodigos.length; i += PROD_BATCH) {
+            const batch = produtoCodigos.slice(i, i + PROD_BATCH)
+            const { data: produtosData, error: produtosError } = await supabase
+                .from('produtos')
+                .select('codigo, nome')
+                .in('codigo', batch)
+
+            if (produtosError) {
+                console.warn('Error fetching product names batch:', produtosError)
+                continue
+            }
+            produtosData?.forEach(p => { produtosMap[p.codigo] = p.nome })
         }
 
         // Transform data to include product name
